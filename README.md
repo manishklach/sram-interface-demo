@@ -86,6 +86,7 @@ For MMIO/SRAM apertures, we follow an ordered pattern:
 Without these architecture-specific instructions, CPU reordering can break correctness by allowing the hardware to observe a "ready" bit before the data payload has actually reached the aperture.
 
 ![Ordered MMIO Access](docs/ordered-mmio.svg)
+*For SRAM/MMIO apertures, correctness depends on ordering: `barrier → store/load → barrier`.*
 
 ---
 
