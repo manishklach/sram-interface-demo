@@ -1,15 +1,15 @@
-# SRAM Interface Demo (Memory Control Plane Prototype)
+# SRAM Interface Demo: A Memory-Control-Plane Prototype
 
-Explicit memory residency control for hardware-facing software, demonstrating how applications can manage hot data without relying on implicit hardware caching.
+A tiny systems prototype showing how software can explicitly bind hot data to SRAM-like residency regions using mock and MMIO backends.
 
 ## What this is
-- A minimal prototype of a memory control plane.
+- A small prototype of a memory control plane.
 - A demonstration of explicit data placement into SRAM-like regions.
 - A dual-backend library supporting both a safe Mock SRAM and an optional MMIO `/dev/mem` backend.
 
 ## What this is NOT
 - A production-ready memory driver.
-- A kernel-level residency manager (see [docs/dev_mem_hint.md](docs/dev_mem_hint.md) for future directions).
+- A kernel-level residency manager (see [docs/dev_mem_hint.md](docs/dev_mem_hint.md)).
 - A replacement for standard CPU caching or coherence protocols.
 
 ## Why this exists
@@ -30,7 +30,7 @@ Example output:
 ```text
 [mem_hint] reserve "kv_tile_0"
 [mem_hint] bind → SRAM offset 0x100
-[mem_hint] write → 42 bytes
+[mem_hint] write → 39 bytes
 [mem_hint] readback → verified ✔
 ```
 
@@ -44,13 +44,21 @@ Example output:
 ## Architecture
 See [docs/architecture.md](docs/architecture.md) for the high-level system design and stack overview.
 
+## Use Cases
+Detailed scenarios for KV caches, MoE experts, and tensor staging are available in [docs/use_cases.md](docs/use_cases.md).
+
+## Safety Notes
+- `/dev/mem` access requires root and can crash your system.
+- This project is for educational and prototyping purposes only.
+- Always use the Mock backend for development.
+
 ## Roadmap
-- [x] Mock SRAM backend
-- [x] MMIO/devmem backend
-- [ ] UIO/VFIO secure mapping
-- [ ] `/dev/mem_hint` kernel driver stub
-- [ ] Compiler-driven placement integration
-- [ ] AI runtime (KV cache/MoE) reference examples
+- **Phase 1**: Mock SRAM backend
+- **Phase 2**: /dev/mem backend
+- **Phase 3**: UIO/VFIO secure mapping
+- **Phase 4**: `/dev/mem_hint` kernel driver stub
+- **Phase 5**: Compiler/runtime integration
+- **Phase 6**: AI runtime reference examples
 
 ## License
 [MIT](LICENSE)
