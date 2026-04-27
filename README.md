@@ -1,39 +1,45 @@
-# SRAM Interface Demo
+# SRAM Interface Demo v2
 
-A minimal hardware-facing example showing how userspace software can interface with an SRAM region exposed via memory-mapped I/O (MMIO).
+A small GitHub-ready prototype showing two layers:
 
-This project demonstrates:
+1. **Raw SRAM interface** using MMIO-style read/write APIs.
+2. **Memory hint / residency API** showing how software could request SRAM placement for important data.
 
-* Mapping a physical SRAM region into userspace
-* Performing reads/writes
-* Copying buffers to/from SRAM
-* Building a foundation for **memory-centric runtimes and explicit residency control**
+The demo now includes a **mock SRAM backend**, so it can run on Windows, macOS, Linux, WSL, and CI without real hardware.
 
 ---
 
-## 🧠 Concept
+## Why This Exists
 
-SRAM is not accessed like normal memory in userspace. It must be exposed through hardware interfaces such as:
+Modern CPUs hide memory placement behind caches and coherency machinery.
 
-* MMIO region (SoC / FPGA)
-* PCIe BAR (accelerators)
-* AXI memory map
-* UIO / VFIO driver
-* Custom kernel driver
-* `/dev/mem` (used here for prototyping)
+A memory-centric runtime may want something more explicit:
 
-This demo uses `/dev/mem` to directly map a physical address into userspace.
+```text
+Runtime/compiler says:
+"this KV-cache tile is hot; keep it in SRAM"
 
----
+Memory control plane says:
+"bind this object to an SRAM-backed region"
 
-## 📁 Project Structure
-
+Hardware/software substrate says:
+"write it into the SRAM aperture"
 ```
+
+This repo is a tiny prototype of that stack.
+
+---
+
+## Project Structure
+
+```text
 sram-interface-demo/
 ├── include/
-│   └── sram_mmio.h
+│   ├── sram_mmio.h
+│   └── mem_hint.h
 ├── src/
 │   ├── sram_mmio.c
+│   ├── mem_hint.c
 │   └── demo.c
 ├── Makefile
 └── README.md
@@ -41,188 +47,184 @@ sram-interface-demo/
 
 ---
 
-## ⚙️ Build & Run Instructions
+## Build on Windows PowerShell
 
-### ✅ Option 1: Linux / WSL (Recommended)
+Install GCC using MSYS2 or MinGW.
 
-This is the only way to run the code meaningfully.
-
-#### 1. Install WSL (Windows only, one-time)
-
-Open PowerShell as Administrator:
+A simple option:
 
 ```powershell
-wsl --install
+winget install msys2
 ```
 
-Restart your machine if prompted.
+Then open an MSYS2 MinGW terminal, or use any terminal where `gcc` is available.
+
+From the repo folder:
+
+```powershell
+gcc -O2 -Wall -Wextra -Iinclude src\demo.c src\sram_mmio.c src\mem_hint.c -o sram_demo.exe
+```
+
+Run:
+
+```powershell
+.\sram_demo.exe
+```
+
+Expected output:
+
+```text
+Opening mock SRAM backend size=0x10000
+
+=== Raw SRAM MMIO-style API ===
+SRAM[0x00] = 0xDEADBEEF
+SRAM[0x04] = 0xCAFEBABE
+
+=== Memory Hint / Residency API Demo ===
+[mem_hint] reserve name=kv_cache_tile_L8_H3 tier=SRAM size=37 offset=0x100
+[mem_hint] bind kv_cache_tile_L8_H3 to SRAM at offset=0x100 size=37
+[mem_hint] read kv_cache_tile_L8_H3 from SRAM at offset=0x100 size=37
+Readback payload: KV_CACHE_TILE: token=42 layer=8 head=3
+```
 
 ---
 
-#### 2. Open WSL
-
-```powershell
-wsl
-```
-
----
-
-#### 3. Install build tools
+## Build on Linux / WSL
 
 ```bash
 sudo apt update
 sudo apt install build-essential
-```
-
----
-
-#### 4. Navigate to your project
-
-```bash
-cd /mnt/c/Users/<your-username>/path/to/sram-interface-demo
-```
-
----
-
-#### 5. Build
-
-```bash
 make
+./sram_demo
 ```
 
-OR manually:
+The default mode uses mock SRAM.
+
+---
+
+## Run Against Real Hardware SRAM
+
+This requires Linux and an MMIO-exposed SRAM region.
 
 ```bash
-gcc -O2 -Wall -Iinclude src/demo.c src/sram_mmio.c -o sram_demo
+sudo ./sram_demo --devmem 0x40000000 0x10000
 ```
 
----
+Arguments:
 
-#### 6. Run (requires root)
+```text
+./sram_demo --devmem <physical_sram_base> <size>
+```
+
+Example:
 
 ```bash
-sudo ./sram_demo
+sudo ./sram_demo --devmem 0x40000000 0x10000
 ```
 
 ---
 
-### ⚠️ Important Notes (WSL/Linux)
+## Important Safety Warning
 
-* `/dev/mem` requires **root access**
-* On most systems, `/dev/mem` is restricted or virtualized
-* This will only fully work if:
+The `--devmem` mode uses `/dev/mem`.
 
-  * You have real hardware exposing SRAM at a physical address
-  * Or you are on an embedded/FPGA platform
+That can be dangerous.
 
-Otherwise, expect mapping failures (this is normal)
+It can:
 
----
+- crash the machine
+- corrupt hardware state
+- violate platform security assumptions
+- fail on normal laptops/desktops
 
-## 💻 Option 2: Windows (PowerShell, Compile Only)
+For production systems, use:
 
-You can compile on Windows, but **it will not run correctly** because `/dev/mem` does not exist.
-
-### Install GCC (MinGW)
-
-```powershell
-winget install mingw
-```
-
-### Compile
-
-```powershell
-gcc src\demo.c src\sram_mmio.c -Iinclude -o sram_demo.exe
-```
-
-### ⚠️ Runtime Limitation
-
-Running `sram_demo.exe` will fail or crash. This mode is only useful for:
-
-* Syntax checking
-* CI builds
-* Demonstrating cross-platform structure
+- UIO
+- VFIO
+- PCIe BAR mapping
+- a custom kernel driver
+- a proper `/dev/mem_hint` interface
 
 ---
 
-## 🧪 Example Output (on real hardware)
+## API Example
 
+Raw SRAM-style API:
+
+```c
+sram_write32(&sram, 0x00, 0xDEADBEEF);
+uint32_t value = sram_read32(&sram, 0x00);
 ```
-Mapping SRAM region at physical address 0x40000000, size 0x10000 bytes
-Writing test values to SRAM...
-SRAM[0x00] = 0xDEADBEEF
-SRAM[0x04] = 0xCAFEBABE
-SRAM[0x08] = 0x12345678
-SRAM string readback: hello from userspace to local SRAM
+
+Memory hint API:
+
+```c
+mem_hint_region_t hint;
+
+mem_hint_reserve(&hint,
+                 "kv_cache_tile_L8_H3",
+                 MEM_TIER_SRAM,
+                 sizeof(payload),
+                 0x100);
+
+mem_hint_bind_to_sram(&sram, &hint, payload);
+mem_hint_read_from_sram(&sram, &hint, readback);
 ```
 
 ---
 
-## ⚠️ Safety Warning
+## Conceptual Stack
 
-Direct `/dev/mem` access:
-
-* Can crash your system
-* Can corrupt hardware state
-* Should **never be used in production**
-
-Use instead:
-
-* UIO driver
-* VFIO
-* PCIe BAR mapping
-* Custom kernel driver
-
----
-
-## 🚀 Why This Matters
-
-This demo is the **lowest layer of a memory-control-plane architecture**:
-
-```
-Memory Intent (compiler/runtime)
+```text
+Application / AI Runtime
         ↓
-Residency API (future)
+Memory Hint API
         ↓
-SRAM MMIO Interface  ← (this repo)
+SRAM Residency Binding
+        ↓
+MMIO / UIO / VFIO / Kernel Driver
         ↓
 Physical SRAM
 ```
 
-Instead of relying on hidden cache behavior, software can explicitly control:
+---
 
-* What data is resident
-* Where it lives (SRAM vs DRAM vs CXL)
-* When it is promoted or evicted
-* Which compute unit owns it
+## Why Mock SRAM Matters
+
+Mock SRAM lets this repo run anywhere.
+
+That makes it useful for:
+
+- GitHub demos
+- CI tests
+- API design
+- explaining the concept
+- showing the future `/dev/mem_hint` direction without needing FPGA hardware
 
 ---
 
-## 🔥 Future Extensions
+## Future Direction
 
-This repo can be extended into:
+This can evolve into a real memory-control-plane prototype:
 
-* `/dev/mem_hint` kernel interface
-* Userspace residency APIs:
+```c
+mem_hint_reserve("kv_cache", SRAM_TIER);
+mem_hint_bind(ptr, SRAM_REGION_2);
+mem_hint_promote(ptr, SRAM_TIER);
+mem_hint_evict(ptr, DRAM_TIER);
+```
 
-  ```c
-  mem_hint_reserve("kv_cache", SRAM_TIER);
-  mem_hint_bind(ptr, REGION_2);
-  ```
-* Compiler-driven placement (Memory Intent IR)
-* AI runtime integration (KV cache / expert routing)
+Possible next steps:
 
----
-
-## 📌 TL;DR
-
-* This is a **hardware-facing SRAM interface demo**
-* Works fully only on Linux + real hardware
-* Windows build = compile only
-* Foundation for **explicit memory control systems**
+- add a Linux kernel driver stub
+- expose `/dev/mem_hint`
+- add `ioctl()` commands for reserve/bind/promote/evict
+- add a Python wrapper
+- add a small AI-runtime example with KV-cache tiles
+- add GitHub Actions for mock-mode build testing
 
 ---
 
-## 🧾 License
+## License
 
-MIT (or your preferred license)
+MIT
