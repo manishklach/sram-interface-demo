@@ -11,6 +11,14 @@ Includes:
 
 ---
 
+## Architecture
+
+![Memory Control Plane](docs/readme-architecture.svg)
+
+This prototype exposes a thin software-visible control plane over SRAM-style memory, instead of relying purely on implicit cache behavior.
+
+---
+
 ## Why this exists
 
 Standard CPUs hide memory placement behind multiple layers of abstraction (caches, coherence protocols, and speculative execution). While efficient for general-purpose workloads, this model breaks down for:
@@ -85,12 +93,6 @@ Without these architecture-specific instructions, CPU reordering can break corre
 |-----------|----------|-------------------------|
 | **Mock SRAM** | Any OS   | Development / testing   |
 | **/dev/mem**  | Linux    | Hardware MMIO prototype |
-
----
-
-## Architecture
-
-![Architecture](docs/architecture.svg)
 
 ---
 
