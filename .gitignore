@@ -2,6 +2,11 @@
 sram_demo
 kv_cache_tile_demo
 tensor_tile_demo
+ordered_tile_copy_demo
+latency_bench
+cacheline_flush_demo
+prefetch_tile_demo
+tlb_page_walk_notes_demo
 *.exe
 
 # Object files
