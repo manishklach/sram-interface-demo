@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SRAM Interface Demo | Memory Control Plane Prototype</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>SRAM Interface Demo</h1>
+            <p class="subtitle">A memory-control-plane prototype for explicit SRAM-style residency.</p>
+            <div class="btn-group">
+                <a href="https://github.com/manishklach/sram-interface-demo" class="btn btn-primary">View on GitHub</a>
+                <a href="https://github.com/manishklach/sram-interface-demo#readme" class="btn btn-outline">Read the README</a>
+            </div>
+        </header>
+
+        <section id="hero">
+            <h2>Explicit Memory Residency, Not Just Implicit Caching</h2>
+            <p>Modern systems usually hide memory placement behind caches, coherence, and implicit hardware policy. This prototype explores the opposite: a small software-visible interface for reserving, binding, and verifying SRAM-like residency regions.</p>
+        </section>
+
+        <section id="why">
+            <h2>Why This Exists</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>The Problem with Caches</h3>
+                    <p>CPUs hide placement through complex hardware heuristics (L1/L2/L3), coherence protocols, and speculation. For general workloads, this is magic; for deterministic AI workloads, it's a bottleneck.</p>
+                </div>
+                <div class="card">
+                    <h3>AI Infrastructure Needs</h3>
+                    <p>AI workloads like <span class="mono">KV cache tiles</span>, <span class="mono">tensor tiles</span>, and <span class="mono">expert weights</span> benefit from explicit placement to minimize tail latency and maximize throughput.</p>
+                </div>
+                <div class="card">
+                    <h3>Software-Defined Residency</h3>
+                    <p>This repo demonstrates a tiny software control plane that gives applications direct control over where data lives in the hardware hierarchy.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="prototype">
+            <h2>What the Prototype Includes</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>Mock SRAM Backend</h3>
+                    <p>A portable userspace implementation using <span class="mono">calloc</span>. Runs on any OS for rapid architecture testing and CI.</p>
+                </div>
+                <div class="card">
+                    <h3>/dev/mem MMIO Backend</h3>
+                    <p>A hardware-facing Linux path that maps physical address ranges (FPGA BRAM, PCIe BAR, SoC SRAM) into userspace.</p>
+                </div>
+                <div class="card">
+                    <h3>mem_hint API</h3>
+                    <p>A clean C API for residency intent: <span class="mono">reserve</span>, <span class="mono">bind</span>, <span class="mono">write</span>, <span class="mono">read</span>, and <span class="mono">verify</span>.</p>
+                </div>
+                <div class="card">
+                    <h3>CLI Demo</h3>
+                    <p>A runnable demonstration of the entire flow in mock mode, including AI-centric examples for KV caches and tensors.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="architecture">
+            <h2>Architecture</h2>
+            <p>The stack bridges the gap between high-level AI runtimes and low-level hardware memory apertures.</p>
+            <div class="svg-container">
+                <img src="architecture.svg" alt="Architecture Diagram" style="width: 100%; max-width: 600px;">
+            </div>
+        </section>
+
+        <section id="demo-flow">
+            <h2>Demo Flow</h2>
+            <p>A typical interaction involves reserving a region, binding it to a backend, and managing data residency.</p>
+            <div class="svg-container">
+                <img src="demo-flow.svg" alt="Demo Flow Diagram" style="width: 100%; max-width: 800px;">
+            </div>
+            
+            <div class="terminal-block">
+                <div class="terminal-header">Terminal — sram_demo</div>
+                <pre>
+$ make
+$ ./sram_demo
+
+[mem_hint] reserve "kv_tile_0" → SRAM
+[mem_hint] bind → offset 0x100
+[mem_hint] write → 39 bytes
+[mem_hint] readback → verified ✔</pre>
+            </div>
+        </section>
+
+        <section id="comparison">
+            <h2>Backend Comparison</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Backend</th>
+                        <th>Platform</th>
+                        <th>Purpose</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Mock SRAM</td>
+                        <td>Any OS</td>
+                        <td>Development/testing</td>
+                        <td><span class="status-tag status-implemented">Implemented</span></td>
+                    </tr>
+                    <tr>
+                        <td>/dev/mem MMIO</td>
+                        <td>Linux</td>
+                        <td>Hardware SRAM aperture</td>
+                        <td><span class="status-tag status-implemented">Implemented</span></td>
+                    </tr>
+                    <tr>
+                        <td>UIO/VFIO</td>
+                        <td>Linux</td>
+                        <td>Safer hardware mapping</td>
+                        <td><span class="status-tag status-planned">Planned</span></td>
+                    </tr>
+                    <tr>
+                        <td>/dev/mem_hint</td>
+                        <td>Linux Kernel</td>
+                        <td>Explicit residency control</td>
+                        <td><span class="status-tag status-planned">Planned</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="use-cases">
+            <h2>Use Cases</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>KV-Cache Tile Residency</h3>
+                    <p>Explicitly binding active LLM attention blocks to fast on-chip memory.</p>
+                </div>
+                <div class="card">
+                    <h3>Tensor Tile Staging</h3>
+                    <p>Overlapping data movement with compute by manually staging tiles in SRAM.</p>
+                </div>
+                <div class="card">
+                    <h3>MoE Expert-Weight Promotion</h3>
+                    <p>Promoting active expert weights to fast residency before execution.</p>
+                </div>
+                <div class="card">
+                    <h3>FPGA Scratchpad Memory</h3>
+                    <p>Managing non-coherent FPGA local memory from host software.</p>
+                </div>
+                <div class="card">
+                    <h3>Near-Memory Accelerator</h3>
+                    <p>Pushing operands into local accelerator memory apertures.</p>
+                </div>
+                <div class="card">
+                    <h3>Compiler-Directed Placement</h3>
+                    <p>Automated residency hints emitted by AI compilers like XLA or Triton.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="safety">
+            <h2>Safety & Limitations</h2>
+            <div class="card">
+                <p>⚠️ <strong>This is not a production driver.</strong> It is a design sketch for a memory control plane.</p>
+                <p>Raw <span class="mono">/dev/mem</span> access is dangerous and should be replaced by UIO/VFIO or a dedicated kernel driver in real systems.</p>
+                <p>Mock mode is provided for portability and architectural demonstration only. The future <span class="mono">/dev/mem_hint</span> interface is conceptual.</p>
+            </div>
+        </section>
+
+        <section id="roadmap">
+            <h2>Roadmap</h2>
+            <ul class="roadmap">
+                <li class="roadmap-item roadmap-done">
+                    <div class="roadmap-check"></div>
+                    <div>
+                        <strong>Mock SRAM Backend</strong>
+                        <p>Fully functional userspace simulation.</p>
+                    </div>
+                </li>
+                <li class="roadmap-item roadmap-done">
+                    <div class="roadmap-check"></div>
+                    <div>
+                        <strong>/dev/mem Backend</strong>
+                        <p>MMIO support for physical hardware apertures.</p>
+                    </div>
+                </li>
+                <li class="roadmap-item roadmap-done">
+                    <div class="roadmap-check"></div>
+                    <div>
+                        <strong>CI + Examples</strong>
+                        <p>GitHub Actions integration and AI-centric demo code.</p>
+                    </div>
+                </li>
+                <li class="roadmap-item">
+                    <div class="roadmap-check"></div>
+                    <div>
+                        <strong>UIO/VFIO Backend</strong>
+                        <p>Moving towards safer hardware mapping interfaces.</p>
+                    </div>
+                </li>
+                <li class="roadmap-item">
+                    <div class="roadmap-check"></div>
+                    <div>
+                        <strong>/dev/mem_hint Kernel Interface</strong>
+                        <p>Conceptual character device for safe residency management.</p>
+                    </div>
+                </li>
+            </ul>
+        </section>
+
+        <footer>
+            <p>Built as a small systems prototype exploring explicit memory residency and hardware/software co-design.</p>
+        </footer>
+    </div>
+</body>
+</html>
