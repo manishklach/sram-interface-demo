@@ -14,6 +14,16 @@ Includes:
 
 ---
 
+## Low-level memory experiments
+
+The repository includes architecture-specific helpers for exploring the interaction between software and the memory hierarchy:
+- **Barriers**: Strict ordering for MMIO/SRAM apertures.
+- **Timing**: Cycle-accurate measurement using `rdtsc` or `cntvct`.
+- **Cache Hints**: Manual control via `clflush` and `prefetch` instructions.
+- **Virtual Memory**: Educational demos of TLB and Page Table concepts.
+
+**Warning**: This repository does **not** directly control page tables or TLBs from user-space. These experiments are for educational and architectural demonstration only. Detailed notes are available in [docs/cache_tlb_notes.md](docs/cache_tlb_notes.md).
+
 ## Architecture
 
 ![Memory Control Plane](docs/readme-architecture.svg)
