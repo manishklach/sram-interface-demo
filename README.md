@@ -1,32 +1,52 @@
 # SRAM Interface Demo: A Memory-Control-Plane Prototype
 
-A tiny systems prototype showing how software can explicitly bind hot data to SRAM-like residency regions using mock and MMIO backends.
+A minimal systems prototype showing how software can explicitly bind hot data to SRAM-like regions instead of relying on implicit cache behavior.
 
-## What this is
-- A small prototype of a memory control plane.
-- A demonstration of explicit data placement into SRAM-like regions.
-- A dual-backend library supporting both a safe Mock SRAM and an optional MMIO `/dev/mem` backend.
+Includes:
+- mock SRAM backend (portable)
+- Linux /dev/mem MMIO backend
+- prototype mem_hint API
 
-## What this is NOT
-- A production-ready memory driver.
-- A kernel-level residency manager (see [docs/dev_mem_hint.md](docs/dev_mem_hint.md)).
-- A replacement for standard CPU caching or coherence protocols.
+🌐 **Live microsite**: [https://manishklach.github.io/sram-interface-demo/](https://manishklach.github.io/sram-interface-demo/)
+
+---
 
 ## Why this exists
-Standard CPUs hide memory placement behind multiple layers of abstraction (L1/L2/L3 caches, reorder buffers, and hardware prefetchers). While efficient for general-purpose code, AI-centric workloads—such as KV caches, MoE expert routing, and tensor tiling—often require explicit control over residency to achieve bounded latency and predictable performance.
 
-This repository demonstrates how software can bypass implicit hardware heuristics to manage memory residency explicitly.
+Standard CPUs hide memory placement behind multiple layers of abstraction (caches, coherence protocols, and speculative execution). While efficient for general-purpose workloads, this model breaks down for:
+
+- **KV-cache heavy inference**: Where deterministic residency prevents tail latency spikes.
+- **Tensor tiling**: Where explicit staging overlaps computation with data movement.
+- **Multi-tier memory systems**: Where placement between SRAM, HBM, and CXL must be software-directed.
+
+This repository explores a different idea: **explicit software-directed residency in fast memory.**
+
+---
+
+## What this is / is not
+
+### What this is
+- A small prototype of a memory control plane.
+- An educational systems demo for hardware/software co-design.
+- A demonstration of explicit residency control.
+
+### What this is not
+- Not a production-ready memory driver.
+- Not a kernel-level manager (though it explores the interface).
+- Not a replacement for standard CPU caches or coherence.
+
+---
 
 ## Quickstart
 
-Build and run the demo on any Linux or WSL environment:
+Build and run the demo on any environment (defaults to Mock mode):
 
 ```bash
 make
 ./sram_demo
 ```
 
-Example output:
+### Sample Output
 ```text
 [mem_hint] reserve "kv_tile_0"
 [mem_hint] bind → SRAM offset 0x100
@@ -34,15 +54,11 @@ Example output:
 [mem_hint] readback → verified ✔
 ```
 
-## Backends
+---
 
-| Backend | Implementation | Use Case |
-| :--- | :--- | :--- |
-| **Mock** | Userspace `calloc` | Local development, CI, and architecture testing. |
-| **MMIO** | `/dev/mem` mapping | Real hardware (FPGA BRAM, PCIe BAR, SoC SRAM). |
+## Ordered MMIO access (assembly layer)
 
-## Assembly-backed MMIO helpers
-The repository includes a small architecture abstraction layer (`include/sram_arch.h`) for ordered 32-bit SRAM/MMIO access.
+The most important part of interacting with SRAM/MMIO isn’t the store—it’s the **ordering**.
 
 ```c
 static inline void sram_barrier(void) {
@@ -56,26 +72,47 @@ static inline void sram_barrier(void) {
 }
 ```
 
-The important idea is not the store itself. It is **ordering**. By using an architecture-specific barrier pattern (`barrier → store/load → barrier`), we ensure that memory operations are not reordered by the CPU around device-visible boundaries. This is critical for AI workloads where data must be fully resident in SRAM before computation begins.
+For MMIO/SRAM apertures, we follow an ordered pattern:
+`barrier → store/load → barrier`
+
+Without these architecture-specific instructions, CPU reordering can break correctness by allowing the hardware to observe a "ready" bit before the data payload has actually reached the aperture.
+
+---
+
+## Backends
+
+| Backend    | Platform | Purpose                 |
+|-----------|----------|-------------------------|
+| **Mock SRAM** | Any OS   | Development / testing   |
+| **/dev/mem**  | Linux    | Hardware MMIO prototype |
+
+---
 
 ## Architecture
-See [docs/architecture.md](docs/architecture.md) for the high-level system design and stack overview.
 
-## Use Cases
-Detailed scenarios for KV caches, MoE experts, and tensor staging are available in [docs/use_cases.md](docs/use_cases.md).
+![Architecture](docs/architecture.svg)
 
-## Safety Notes
-- `/dev/mem` access requires root and can crash your system.
-- This project is for educational and prototyping purposes only.
-- Always use the Mock backend for development.
+---
+
+## Use cases
+
+- **KV-cache tile residency**: Binding active attention blocks to on-chip SRAM.
+- **Tensor tile staging**: Manual orchestration of matrix multiplication tiles.
+- **MoE expert placement**: Promoting active experts to fast residency.
+- **FPGA scratchpad memory**: Software management of non-coherent BRAM.
+
+---
 
 ## Roadmap
-- **Phase 1**: Mock SRAM backend
-- **Phase 2**: /dev/mem backend
-- **Phase 3**: UIO/VFIO secure mapping
-- **Phase 4**: `/dev/mem_hint` kernel driver stub
-- **Phase 5**: Compiler/runtime integration
-- **Phase 6**: AI runtime reference examples
+
+- [x] Mock backend implementation
+- [x] MMIO/devmem backend implementation
+- [x] Assembly-backed ordering layer
+- [ ] UIO/VFIO secure mapping backend
+- [ ] `/dev/mem_hint` conceptual kernel interface
+- [ ] Compiler/runtime intent integration
+
+---
 
 ## License
 [MIT](LICENSE)

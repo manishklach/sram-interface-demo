@@ -60,15 +60,22 @@ int main(int argc, char **argv) {
 
     // Example Trace
     mem_hint_region_t kv_hint;
-    const char *payload = "memory-control-plane-prototype-payload";
-    char readback[128] = {0};
+    size_t payload_size = 4096;
+    uint8_t *payload = (uint8_t *)malloc(payload_size);
+    uint8_t *readback = (uint8_t *)malloc(payload_size);
+    
+    if (!payload || !readback) return 1;
+    memset(payload, 0x42, payload_size);
+    memset(readback, 0, payload_size);
 
     printf("[mem_hint] reserve \"kv_tile_0\"\n");
-    mem_hint_reserve(&kv_hint, "kv_tile_0", MEM_TIER_SRAM, strlen(payload) + 1, 0x100, 16);
+    mem_hint_reserve(&kv_hint, "kv_tile_0", MEM_TIER_SRAM, payload_size, 0x100, 16);
 
     printf("[mem_hint] bind → SRAM offset 0x%zx\n", kv_hint.offset);
     if (mem_hint_bind_to_sram(&sram, &kv_hint) != 0) {
         fprintf(stderr, "Bind failed\n");
+        free(payload);
+        free(readback);
         goto cleanup;
     }
 
@@ -78,11 +85,14 @@ int main(int argc, char **argv) {
     printf("[mem_hint] readback → ");
     mem_hint_read(&sram, &kv_hint, readback);
 
-    if (strcmp(payload, readback) == 0) {
+    if (memcmp(payload, readback, payload_size) == 0) {
         printf("verified ✔\n");
     } else {
         printf("failed ✘\n");
     }
+
+    free(payload);
+    free(readback);
 
 cleanup:
     mem_hint_release(&kv_hint);
