@@ -17,7 +17,6 @@ int sram_open_mock(sram_region_t *region, size_t size) {
 
     uint8_t *buf = (uint8_t *)calloc(size, 1);
     if (!buf) {
-        perror("calloc mock SRAM");
         return -1;
     }
 
@@ -35,7 +34,6 @@ int sram_open_devmem(sram_region_t *region, uintptr_t phys_addr, size_t size) {
     (void)region;
     (void)phys_addr;
     (void)size;
-    fprintf(stderr, "sram_open_devmem is only supported on Linux.\n");
     return -1;
 #else
     if (!region || size == 0) {
@@ -44,7 +42,6 @@ int sram_open_devmem(sram_region_t *region, uintptr_t phys_addr, size_t size) {
 
     region->fd = open("/dev/mem", O_RDWR | O_SYNC);
     if (region->fd < 0) {
-        perror("open /dev/mem");
         return -1;
     }
 
@@ -58,7 +55,6 @@ int sram_open_devmem(sram_region_t *region, uintptr_t phys_addr, size_t size) {
     );
 
     if (region->base == MAP_FAILED) {
-        perror("mmap /dev/mem");
         close(region->fd);
         region->fd = -1;
         return -1;

@@ -1,62 +1,56 @@
-# SRAM Interface Demo
+# SRAM Interface Demo (Memory Control Plane Prototype)
 
-**A tiny memory-control-plane prototype showing how software can explicitly bind hot data to SRAM-like residency regions.**
+Explicit memory residency control for hardware-facing software, demonstrating how applications can manage hot data without relying on implicit hardware caching.
 
-## 🧠 Concept
+## What this is
+- A minimal prototype of a memory control plane.
+- A demonstration of explicit data placement into SRAM-like regions.
+- A dual-backend library supporting both a safe Mock SRAM and an optional MMIO `/dev/mem` backend.
 
-SRAM is not accessed like normal memory in userspace. It must be exposed through hardware interfaces such as MMIO regions, PCIe BARs, or `/dev/mem` (used here for prototyping).
+## What this is NOT
+- A production-ready memory driver.
+- A kernel-level residency manager (see [docs/dev_mem_hint.md](docs/dev_mem_hint.md) for future directions).
+- A replacement for standard CPU caching or coherence protocols.
 
-This project demonstrates:
-* Mapping a physical SRAM region into userspace
-* Performing explicit reads/writes and buffer copies
-* Building a foundation for **memory-centric runtimes and explicit residency control**
+## Why this exists
+Standard CPUs hide memory placement behind multiple layers of abstraction (L1/L2/L3 caches, reorder buffers, and hardware prefetchers). While efficient for general-purpose code, AI-centric workloads—such as KV caches, MoE expert routing, and tensor tiling—often require explicit control over residency to achieve bounded latency and predictable performance.
 
-## 🆚 What this is / What this is not
+This repository demonstrates how software can bypass implicit hardware heuristics to manage memory residency explicitly.
 
-**What this is:**
-* An educational design sketch and prototype for hardware/software codesign.
-* A demonstration of how AI runtimes and compilers might explicitly route memory.
-* A low-level mock and MMIO interface layer.
+## Quickstart
 
-**What this is not:**
-* A production-ready memory driver.
-* A replacement for CPUs or standard caching.
-* Safe to use on production systems (`/dev/mem` can crash your hardware).
+Build and run the demo on any Linux or WSL environment:
 
-## 🕵️‍♂️ Why CPUs hide this
-
-CPUs normally rely on caches, reorder buffers, coherence, and implicit locality. You access an address, and the hardware transparently decides where it lives. 
-
-This repository demonstrates **explicit placement** instead. Instead of relying on hidden cache behavior, software can explicitly control:
-* What data is resident
-* Where it lives (SRAM vs DRAM vs CXL)
-* When it is promoted or evicted
-* Which compute unit owns it
-
-## 📁 Project Structure
-
-```
-sram-interface-demo/
-├── docs/                 # Architecture diagrams, use cases, and design docs
-├── examples/             # AI runtime examples (KV cache, tensor staging)
-├── include/              # Header files (sram_mmio, mem_hint)
-├── src/                  # Core library and demo implementation
-├── Makefile              # Build system
-├── INSTALL.md            # Installation and build instructions
-└── README.md             # This file
+```bash
+make
+./sram_demo
 ```
 
-## ⚙️ Getting Started
+Example output:
+```text
+[mem_hint] reserve "kv_tile_0"
+[mem_hint] bind → SRAM offset 0x100
+[mem_hint] write → 42 bytes
+[mem_hint] readback → verified ✔
+```
 
-See [INSTALL.md](INSTALL.md) for build instructions and how to run the demo.
+## Backends
 
-## 🚀 Future Extensions
+| Backend | Implementation | Use Case |
+| :--- | :--- | :--- |
+| **Mock** | Userspace `calloc` | Local development, CI, and architecture testing. |
+| **MMIO** | `/dev/mem` mapping | Real hardware (FPGA BRAM, PCIe BAR, SoC SRAM). |
 
-This repo represents the lowest layer of a memory-control-plane architecture. Future phases (detailed in [ROADMAP.md](ROADMAP.md)) will explore:
-* `/dev/mem_hint` kernel character device
-* Compiler-driven placement (Memory Intent IR)
-* Deeper AI runtime integration
+## Architecture
+See [docs/architecture.md](docs/architecture.md) for the high-level system design and stack overview.
 
-## 🧾 License
+## Roadmap
+- [x] Mock SRAM backend
+- [x] MMIO/devmem backend
+- [ ] UIO/VFIO secure mapping
+- [ ] `/dev/mem_hint` kernel driver stub
+- [ ] Compiler-driven placement integration
+- [ ] AI runtime (KV cache/MoE) reference examples
 
-[MIT License](LICENSE)
+## License
+[MIT](LICENSE)

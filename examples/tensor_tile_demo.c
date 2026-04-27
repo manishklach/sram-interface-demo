@@ -1,56 +1,34 @@
 #include "sram_mmio.h"
 #include "mem_hint.h"
 #include <stdio.h>
-#include <stdint.h>
-
-#define DEMO_SRAM_SIZE 0x10000
-#define TILE_ELEMENTS 16
 
 int main(void) {
     sram_region_t sram;
-    if (sram_open_mock(&sram, DEMO_SRAM_SIZE) != 0) {
-        fprintf(stderr, "Failed to open mock SRAM\n");
-        return 1;
-    }
+    if (sram_open_mock(&sram, 0x10000) != 0) return 1;
 
-    printf("=== Tensor Tile Staging Demo ===\n\n");
+    mem_hint_region_t hint;
+    float tensor[4] = {1.1f, 2.2f, 3.3f, 4.4f};
+    float readback[4] = {0};
 
-    float tensor_in[TILE_ELEMENTS];
-    float tensor_out[TILE_ELEMENTS];
+    printf("[1] reserve \"tensor_tile\"\n");
+    mem_hint_reserve(&hint, "tensor_tile", MEM_TIER_SRAM, sizeof(tensor), 0x500);
 
-    for (int i = 0; i < TILE_ELEMENTS; i++) {
-        tensor_in[i] = (float)(i * 1.5);
-        tensor_out[i] = 0.0f;
-    }
+    printf("[2] bind → SRAM\n");
+    mem_hint_bind_to_sram(&sram, &hint);
 
-    mem_hint_region_t tensor_hint;
-    tensor_hint.flags = 1; // 1 = Read/Write
-    tensor_hint.owner_id = 42; // Example layer ID
+    printf("[3] write → tensor\n");
+    mem_hint_write(&sram, &hint, tensor);
 
-    printf("[1] Reserving SRAM for Tensor Tile (size: %zu bytes)...\n", sizeof(tensor_in));
-    mem_hint_reserve(&tensor_hint, "tensor_tile_L42", MEM_TIER_SRAM, sizeof(tensor_in), 0x2000);
+    printf("[4] readback → ");
+    mem_hint_read(&sram, &hint, readback);
 
-    printf("\n[2] Binding Tensor Tile to SRAM...\n");
-    mem_hint_bind_to_sram(&sram, &tensor_hint, tensor_in);
+    int ok = 1;
+    for(int i=0; i<4; i++) if(tensor[i] != readback[i]) ok = 0;
 
-    printf("\n[3] Reading back Tensor Tile from SRAM...\n");
-    mem_hint_read_from_sram(&sram, &tensor_hint, tensor_out);
+    if (ok) printf("verified ✔\n");
+    else printf("failed ✘\n");
 
-    printf("\n[4] Verification:\n");
-    int success = 1;
-    for (int i = 0; i < TILE_ELEMENTS; i++) {
-        if (tensor_in[i] != tensor_out[i]) {
-            success = 0;
-            printf("Mismatch at index %d: expected %f, got %f\n", i, tensor_in[i], tensor_out[i]);
-        }
-    }
-
-    if (success) {
-        printf("SUCCESS! All %d elements match.\n", TILE_ELEMENTS);
-    } else {
-        printf("FAILED!\n");
-    }
-
+    mem_hint_release(&hint);
     sram_close(&sram);
     return 0;
 }

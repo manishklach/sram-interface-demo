@@ -10,6 +10,7 @@
 #define DEFAULT_SRAM_SIZE      0x10000
 
 static void print_help(const char *prog_name) {
+    printf("SRAM Interface Demo (Memory Control Plane Prototype)\n\n");
     printf("Usage:\n");
     printf("  %s [options]\n\n", prog_name);
     printf("Options:\n");
@@ -43,14 +44,8 @@ int main(int argc, char **argv) {
         }
         uintptr_t addr = strtoull(argv[2], NULL, 0);
         size_t size = strtoull(argv[3], NULL, 0);
-
-        printf("Opening real SRAM via /dev/mem addr=0x%lx size=0x%lx\n",
-               (unsigned long)addr,
-               (unsigned long)size);
-
         rc = sram_open_devmem(&sram, addr, size);
     } else {
-        printf("Opening mock SRAM backend size=0x%x\n", DEFAULT_SRAM_SIZE);
         rc = sram_open_mock(&sram, DEFAULT_SRAM_SIZE);
     }
 
@@ -59,30 +54,34 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    printf("\n=== Raw SRAM MMIO-style API ===\n");
-    sram_write32(&sram, 0x00, 0xDEADBEEF);
-    sram_write32(&sram, 0x04, 0xCAFEBABE);
-
-    printf("SRAM[0x00] = 0x%08X\n", sram_read32(&sram, 0x00));
-    printf("SRAM[0x04] = 0x%08X\n", sram_read32(&sram, 0x04));
-
-    printf("\n=== Memory Hint / Residency API Demo ===\n");
-
-    const char kv_tile[] = "KV_CACHE_TILE: token=42 layer=8 head=3";
+    // Example Trace
+    mem_hint_region_t kv_hint;
+    const char *payload = "memory-control-plane-prototype-payload";
     char readback[128] = {0};
 
-    mem_hint_region_t kv_hint;
-    mem_hint_reserve(&kv_hint,
-                     "kv_cache_tile_L8_H3",
-                     MEM_TIER_SRAM,
-                     sizeof(kv_tile),
-                     0x100);
+    printf("[mem_hint] reserve \"kv_tile_0\"\n");
+    mem_hint_reserve(&kv_hint, "kv_tile_0", MEM_TIER_SRAM, strlen(payload) + 1, 0x100);
 
-    mem_hint_bind_to_sram(&sram, &kv_hint, kv_tile);
-    mem_hint_read_from_sram(&sram, &kv_hint, readback);
+    printf("[mem_hint] bind → SRAM offset 0x%zx\n", kv_hint.offset);
+    if (mem_hint_bind_to_sram(&sram, &kv_hint) != 0) {
+        fprintf(stderr, "Bind failed\n");
+        goto cleanup;
+    }
 
-    printf("Readback payload: %s\n", readback);
+    printf("[mem_hint] write → %zu bytes\n", kv_hint.size);
+    mem_hint_write(&sram, &kv_hint, payload);
 
+    printf("[mem_hint] readback → ");
+    mem_hint_read(&sram, &kv_hint, readback);
+
+    if (strcmp(payload, readback) == 0) {
+        printf("verified ✔\n");
+    } else {
+        printf("failed ✘\n");
+    }
+
+cleanup:
+    mem_hint_release(&kv_hint);
     sram_close(&sram);
     return 0;
 }
