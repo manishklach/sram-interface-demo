@@ -42,7 +42,21 @@ Example output:
 | **MMIO** | `/dev/mem` mapping | Real hardware (FPGA BRAM, PCIe BAR, SoC SRAM). |
 
 ## Assembly-backed MMIO helpers
-The repository includes a small architecture abstraction layer (`include/sram_arch.h`) for ordered 32-bit SRAM/MMIO access. This layer uses inline assembly for memory barriers (`mfence` on x86, `dmb sy` on ARM) to ensure that memory operations are not reordered by the CPU around device-visible boundaries.
+The repository includes a small architecture abstraction layer (`include/sram_arch.h`) for ordered 32-bit SRAM/MMIO access.
+
+```c
+static inline void sram_barrier(void) {
+#if defined(__x86_64__)
+    __asm__ volatile("mfence" ::: "memory");
+#elif defined(__aarch64__)
+    __asm__ volatile("dmb sy" ::: "memory");
+#else
+    __sync_synchronize();
+#endif
+}
+```
+
+The important idea is not the store itself. It is **ordering**. By using an architecture-specific barrier pattern (`barrier → store/load → barrier`), we ensure that memory operations are not reordered by the CPU around device-visible boundaries. This is critical for AI workloads where data must be fully resident in SRAM before computation begins.
 
 ## Architecture
 See [docs/architecture.md](docs/architecture.md) for the high-level system design and stack overview.

@@ -1,35 +1,41 @@
 # Assembly-backed MMIO & Memory Barriers
 
-This document explains the architecture-specific layer used in this prototype for ordered 32-bit SRAM/MMIO access.
+This document explains why explicit ordering is critical when interacting with SRAM-like residency regions and Memory Mapped I/O (MMIO).
 
-## Why `volatile`?
+## The Core Concept
 
-In C, the `volatile` keyword tells the compiler that the value of a variable may change at any time—without any action being taken by the code the compiler finds nearby. For MMIO (Memory Mapped I/O), this is critical because:
-1. **Device Visibility**: A write to an MMIO address must actually happen on the hardware bus; the compiler cannot "optimize away" the write even if the value is never read back in the software.
-2. **Side Effects**: Reading from an MMIO address might trigger a hardware action (like clearing an interrupt or popping a FIFO).
+In a memory-control-plane architecture, the important idea is not just the store itself, but the **ordering** of operations.
 
-## Memory Barriers
+### The Access Pattern
+To ensure a device correctly observes a sequence of operations, we use an "Ordered Access" pattern:
 
-Even with `volatile`, modern CPUs can reorder memory operations for performance. For example, a CPU might try to read data from SRAM before the command to "prepare" that data has actually reached the device.
+```text
+barrier → store/load → barrier
+```
 
-### Compiler Barriers vs. CPU Barriers
+## Why Volatile?
 
-- **Compiler Barrier**: Tells the compiler not to reorder instructions across the barrier during optimization. It does *not* prevent the CPU hardware from reordering at runtime.
-- **CPU Memory Barrier**: An actual hardware instruction that ensures all memory operations before the barrier are completed before any operations after the barrier begin.
+The `volatile` keyword tells the C compiler that the load or store is "device-visible" and must not be optimized away or combined with other operations. However, `volatile` alone does **not** prevent the CPU hardware from reordering operations.
+
+## Barriers
+
+1. **Compiler Barrier**: Prevents the compiler from moving instructions across the barrier during optimization.
+2. **CPU Memory Barrier**: Prevents the hardware (out-of-order execution engine) from reordering memory operations at runtime.
+
+### MMIO vs. Cached RAM
+Ordinary RAM is cached and follows cache-coherency rules. MMIO apertures and SRAM buffers often behave differently:
+- They may be uncacheable.
+- They may require strictly ordered writes (e.g., writing a payload *before* writing a "ready" bit).
+- They may not participate in the standard coherence protocol.
 
 ## Architecture Implementation
 
-This prototype implements `sram_arch_memory_barrier()` using inline assembly for major architectures:
-
 ### x86_64: `mfence`
-On x86, the `mfence` instruction is used to serialize all load and store operations that were issued prior to the instruction.
+On x86, we use `mfence` for full memory serialization. We also provide a `pause` helper for busy-wait loops.
 
-### aarch64 (ARMv8): `dmb sy`
-On ARM, the `dmb sy` (Data Memory Barrier, Full System) instruction ensures that all explicit memory accesses before the barrier are observed by all observers in the system before any explicit memory accesses after the barrier.
+### aarch64: `dmb sy`
+On ARM64, we use `dmb sy` (Data Memory Barrier, Full System). We also provide a `yield` helper.
 
-### Portable Fallback
-On unknown architectures, we fall back to `__sync_synchronize()`, which is a GCC builtin that issues a full memory barrier.
+## Prototype Status
 
-## Limitations
-
-This implementation is a **prototype** and a **design sketch**. Real hardware integration often requires stronger, platform-specific ordering rules (e.g., PCIe ordering, non-posted vs. posted writes). For production systems, a real kernel driver or a specialized userspace framework (like UIO/VFIO) is required to handle these complexities safely.
+This implementation is a prototype and a design sketch. Real-world production drivers may use platform-specific kernel primitives (like `rmb()`, `wmb()`, or `iowrite32()`) instead of raw inline assembly to handle the specific requirements of the bus (e.g., PCIe vs. AXI).

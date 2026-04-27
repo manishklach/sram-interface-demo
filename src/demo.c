@@ -1,5 +1,6 @@
 #include "sram_mmio.h"
 #include "mem_hint.h"
+#include "sram_arch.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -31,7 +32,8 @@ int main(int argc, char **argv) {
     sram_region_t sram;
     int rc;
 
-    printf("[arch] using assembly-backed memory barrier where supported\n");
+    printf("[arch] ordered MMIO helpers enabled\n");
+    printf("[arch] barrier = %s on %s\n", sram_arch_barrier_name(), sram_arch_name());
 
     if (argc >= 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) {
         print_help(argv[0]);

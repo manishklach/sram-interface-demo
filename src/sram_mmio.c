@@ -98,9 +98,7 @@ uint32_t sram_read32(sram_region_t *region, size_t offset) {
         return 0;
     }
 
-    uint32_t val = sram_arch_read32((volatile void *)(region->base + offset));
-    sram_arch_memory_barrier();
-    return val;
+    return sram_arch_read32((volatile void *)(region->base + offset));
 }
 
 void sram_write32(sram_region_t *region, size_t offset, uint32_t value) {
@@ -108,9 +106,7 @@ void sram_write32(sram_region_t *region, size_t offset, uint32_t value) {
         return;
     }
 
-    sram_arch_memory_barrier();
     sram_arch_write32((volatile void *)(region->base + offset), value);
-    sram_arch_memory_barrier();
 }
 
 int sram_copy_to(sram_region_t *region, size_t offset, const void *src, size_t len) {
@@ -118,9 +114,14 @@ int sram_copy_to(sram_region_t *region, size_t offset, const void *src, size_t l
         return -1;
     }
 
-    sram_arch_memory_barrier();
-    memcpy((void *)(region->base + offset), src, len);
-    sram_arch_memory_barrier();
+    /* Use ordered word-based copy if 4-byte aligned */
+    if ((offset % 4 == 0) && (len % 4 == 0)) {
+        sram_arch_copy32_to_sram((volatile void *)(region->base + offset), (const uint32_t *)src, len / 4);
+    } else {
+        sram_arch_barrier();
+        memcpy((void *)(region->base + offset), src, len);
+        sram_arch_barrier();
+    }
     return 0;
 }
 
@@ -129,8 +130,13 @@ int sram_copy_from(sram_region_t *region, size_t offset, void *dst, size_t len) 
         return -1;
     }
 
-    sram_arch_memory_barrier();
-    memcpy(dst, (const void *)(region->base + offset), len);
-    sram_arch_memory_barrier();
+    /* Use ordered word-based copy if 4-byte aligned */
+    if ((offset % 4 == 0) && (len % 4 == 0)) {
+        sram_arch_copy32_from_sram((uint32_t *)dst, (volatile void *)(region->base + offset), len / 4);
+    } else {
+        sram_arch_barrier();
+        memcpy(dst, (const void *)(region->base + offset), len);
+        sram_arch_barrier();
+    }
     return 0;
 }
