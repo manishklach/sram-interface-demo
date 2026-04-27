@@ -1,5 +1,8 @@
 # SRAM Interface Demo: A Memory-Control-Plane Prototype
 
+![Build Status](https://github.com/manishklach/sram-interface-demo/actions/workflows/build.yml/badge.svg)
+[![Live Demo](https://img.shields.io/badge/demo-live-blue)](https://manishklach.github.io/sram-interface-demo/)
+
 A minimal systems prototype showing how software can explicitly bind hot data to SRAM-like regions instead of relying on implicit cache behavior.
 
 Includes:
@@ -87,6 +90,27 @@ Without these architecture-specific instructions, CPU reordering can break corre
 
 ![Ordered MMIO Access](docs/ordered-mmio.svg)
 *For SRAM/MMIO apertures, correctness depends on ordering: `barrier → store/load → barrier`.*
+
+---
+
+## Mock-mode benchmark
+
+The repository includes a latency benchmark to measure the overhead of the memory-control-plane logic in mock mode. This is useful for validating the control path but does **not** reflect real SRAM hardware latency.
+
+```bash
+make latency_bench
+./latency_bench
+./latency_bench 5000000
+```
+
+### Example Output
+```text
+[bench] backend: mock SRAM
+[bench] iterations: 1000000
+[bench] write32 avg: 4.52 ns/op
+[bench] read32 avg: 3.10 ns/op
+[bench] verify: OK ✔
+```
 
 ---
 

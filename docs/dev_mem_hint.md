@@ -17,7 +17,7 @@ Raw `/dev/mem` allows a user process to read or write any physical memory, bypas
 
 ## Proposed `ioctl` Interface
 
-The character device would expose an API via `ioctl` commands:
+The character device would expose an API via `ioctl` commands (sketched in [include/mem_hint_ioctl.h](../include/mem_hint_ioctl.h)):
 
 * `MEM_HINT_RESERVE`: Request a block of memory in a specific tier (SRAM, CXL).
 * `MEM_HINT_BIND`: Bind an allocated virtual memory range to the reserved tier.

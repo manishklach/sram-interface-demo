@@ -160,6 +160,22 @@ $ ./sram_demo
             </div>
         </section>
 
+        <section id="benchmark">
+            <h2>Mock Benchmark</h2>
+            <p>A low-level latency benchmark measures the overhead of the memory-control-plane logic in mock mode. This is useful for validating the control path overhead, though it does not reflect physical hardware latency.</p>
+            <div class="terminal-block">
+                <div class="terminal-header">Terminal — latency_bench</div>
+                <pre>
+$ ./latency_bench 1000000
+
+[bench] backend: mock SRAM
+[bench] iterations: 1000000
+[bench] write32 avg: 4.52 ns/op
+[bench] read32 avg: 3.10 ns/op
+[bench] verify: OK ✔</pre>
+            </div>
+        </section>
+
         <section id="safety">
             <h2>Safety & Limitations</h2>
             <div class="card">
