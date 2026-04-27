@@ -41,6 +41,9 @@ Example output:
 | **Mock** | Userspace `calloc` | Local development, CI, and architecture testing. |
 | **MMIO** | `/dev/mem` mapping | Real hardware (FPGA BRAM, PCIe BAR, SoC SRAM). |
 
+## Assembly-backed MMIO helpers
+The repository includes a small architecture abstraction layer (`include/sram_arch.h`) for ordered 32-bit SRAM/MMIO access. This layer uses inline assembly for memory barriers (`mfence` on x86, `dmb sy` on ARM) to ensure that memory operations are not reordered by the CPU around device-visible boundaries.
+
 ## Architecture
 See [docs/architecture.md](docs/architecture.md) for the high-level system design and stack overview.
 

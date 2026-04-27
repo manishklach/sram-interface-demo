@@ -1,4 +1,5 @@
 #include "sram_mmio.h"
+#include "sram_arch.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -97,8 +98,9 @@ uint32_t sram_read32(sram_region_t *region, size_t offset) {
         return 0;
     }
 
-    volatile uint32_t *ptr = (volatile uint32_t *)(region->base + offset);
-    return *ptr;
+    uint32_t val = sram_arch_read32((volatile void *)(region->base + offset));
+    sram_arch_memory_barrier();
+    return val;
 }
 
 void sram_write32(sram_region_t *region, size_t offset, uint32_t value) {
@@ -106,8 +108,9 @@ void sram_write32(sram_region_t *region, size_t offset, uint32_t value) {
         return;
     }
 
-    volatile uint32_t *ptr = (volatile uint32_t *)(region->base + offset);
-    *ptr = value;
+    sram_arch_memory_barrier();
+    sram_arch_write32((volatile void *)(region->base + offset), value);
+    sram_arch_memory_barrier();
 }
 
 int sram_copy_to(sram_region_t *region, size_t offset, const void *src, size_t len) {
@@ -115,7 +118,9 @@ int sram_copy_to(sram_region_t *region, size_t offset, const void *src, size_t l
         return -1;
     }
 
+    sram_arch_memory_barrier();
     memcpy((void *)(region->base + offset), src, len);
+    sram_arch_memory_barrier();
     return 0;
 }
 
@@ -124,6 +129,8 @@ int sram_copy_from(sram_region_t *region, size_t offset, void *dst, size_t len) 
         return -1;
     }
 
+    sram_arch_memory_barrier();
     memcpy(dst, (const void *)(region->base + offset), len);
+    sram_arch_memory_barrier();
     return 0;
 }

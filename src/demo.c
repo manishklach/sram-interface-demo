@@ -31,6 +31,8 @@ int main(int argc, char **argv) {
     sram_region_t sram;
     int rc;
 
+    printf("[arch] using assembly-backed memory barrier where supported\n");
+
     if (argc >= 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) {
         print_help(argv[0]);
         return 0;
