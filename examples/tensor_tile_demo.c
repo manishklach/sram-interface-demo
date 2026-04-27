@@ -11,7 +11,7 @@ int main(void) {
     float readback[4] = {0};
 
     printf("[1] reserve \"tensor_tile\"\n");
-    mem_hint_reserve(&hint, "tensor_tile", MEM_TIER_SRAM, sizeof(tensor), 0x500);
+    mem_hint_reserve(&hint, "tensor_tile", MEM_TIER_SRAM, sizeof(tensor), 0x500, 16);
 
     printf("[2] bind → SRAM\n");
     mem_hint_bind_to_sram(&sram, &hint);

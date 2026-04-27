@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
     char readback[128] = {0};
 
     printf("[mem_hint] reserve \"kv_tile_0\"\n");
-    mem_hint_reserve(&kv_hint, "kv_tile_0", MEM_TIER_SRAM, strlen(payload) + 1, 0x100);
+    mem_hint_reserve(&kv_hint, "kv_tile_0", MEM_TIER_SRAM, strlen(payload) + 1, 0x100, 16);
 
     printf("[mem_hint] bind → SRAM offset 0x%zx\n", kv_hint.offset);
     if (mem_hint_bind_to_sram(&sram, &kv_hint) != 0) {

@@ -5,6 +5,17 @@
 #include <stdint.h>
 #include "sram_mmio.h"
 
+/**
+ * mem_hint_err_t: Specific error codes for the memory control plane.
+ */
+typedef enum {
+    MEM_HINT_SUCCESS = 0,
+    MEM_HINT_ERR_INVALID = -1,
+    MEM_HINT_ERR_OOB = -2,
+    MEM_HINT_ERR_BIND = -3,
+    MEM_HINT_ERR_ALIGN = -4
+} mem_hint_err_t;
+
 typedef enum {
     MEM_TIER_SRAM,
     MEM_TIER_DRAM,
@@ -21,8 +32,9 @@ typedef struct {
     mem_tier_t tier;
     size_t size;
     size_t offset;
+    size_t alignment; // Required memory alignment (e.g., 4096)
     uint32_t flags;
-    int owner_id;  // layer / expert / thread / core / queue
+    int owner_id;     // layer / expert / thread / core / queue
 } mem_hint_region_t;
 
 /**
@@ -32,7 +44,8 @@ int mem_hint_reserve(mem_hint_region_t *hint,
                      const char *name,
                      mem_tier_t tier,
                      size_t size,
-                     size_t offset);
+                     size_t offset,
+                     size_t alignment);
 
 /**
  * Bind a reserved region to a specific SRAM backend.

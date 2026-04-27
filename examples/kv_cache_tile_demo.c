@@ -12,7 +12,7 @@ int main(void) {
     char buffer[64] = {0};
 
     printf("[1] reserve \"kv_tile_0\"\n");
-    mem_hint_reserve(&hint, "kv_tile_0", MEM_TIER_SRAM, strlen(data) + 1, 0x0);
+    mem_hint_reserve(&hint, "kv_tile_0", MEM_TIER_SRAM, strlen(data) + 1, 0x0, 0);
 
     printf("[2] bind → SRAM\n");
     mem_hint_bind_to_sram(&sram, &hint);
