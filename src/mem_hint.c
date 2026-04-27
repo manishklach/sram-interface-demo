@@ -24,7 +24,7 @@ int mem_hint_reserve(mem_hint_region_t *hint,
     }
 
     hint->name = name;
-    hint->preferred_tier = tier;
+    hint->tier = tier;
     hint->size = size;
     hint->offset = offset;
     hint->flags = 0;
@@ -32,7 +32,7 @@ int mem_hint_reserve(mem_hint_region_t *hint,
 
     printf("[mem_hint] reserve name=%s tier=%s size=%zu offset=0x%zx\n",
            hint->name,
-           mem_tier_name(hint->preferred_tier),
+           mem_tier_name(hint->tier),
            hint->size,
            hint->offset);
 

@@ -16,7 +16,7 @@ typedef enum {
 
 typedef struct {
     const char *name;
-    mem_tier_t preferred_tier;
+    mem_tier_t tier;
     size_t size;
     size_t offset;
     uint32_t flags;
