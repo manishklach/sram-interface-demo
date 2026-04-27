@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 500">
+  <!-- Definitions for styling -->
+  <defs>
+    <style>
+      .box { fill: #f8f9fa; stroke: #343a40; stroke-width: 2; rx: 8; ry: 8; }
+      .text-title { font-family: -apple-system, sans-serif; font-weight: bold; font-size: 16px; fill: #212529; text-anchor: middle; }
+      .text-desc { font-family: -apple-system, sans-serif; font-size: 12px; fill: #495057; text-anchor: middle; }
+      .line { stroke: #adb5bd; stroke-width: 3; fill: none; }
+      .arrow { fill: #adb5bd; }
+      .bg-app { fill: #e3f2fd; stroke: #1976d2; }
+      .bg-api { fill: #f3e5f5; stroke: #7b1fa2; }
+      .bg-selector { fill: #fff3e0; stroke: #f57c00; }
+      .bg-mock { fill: #e8f5e9; stroke: #388e3c; }
+      .bg-hw { fill: #ffebee; stroke: #d32f2f; }
+    </style>
+    <!-- Arrowhead marker -->
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" class="arrow" />
+    </marker>
+  </defs>
+
+  <!-- Application Layer -->
+  <rect x="200" y="20" width="200" height="60" class="box bg-app" />
+  <text x="300" y="45" class="text-title">Application / AI Runtime</text>
+  <text x="300" y="65" class="text-desc">(KV Cache, Tensor Routing)</text>
+
+  <!-- Flow 1 -->
+  <line x1="300" y1="80" x2="300" y2="120" class="line" marker-end="url(#arrowhead)" />
+
+  <!-- API Layer -->
+  <rect x="200" y="120" width="200" height="60" class="box bg-api" />
+  <text x="300" y="145" class="text-title">mem_hint API</text>
+  <text x="300" y="165" class="text-desc">(Explicit Residency Binding)</text>
+
+  <!-- Flow 2 -->
+  <line x1="300" y1="180" x2="300" y2="220" class="line" marker-end="url(#arrowhead)" />
+
+  <!-- Backend Selector Layer -->
+  <rect x="150" y="220" width="300" height="60" class="box bg-selector" />
+  <text x="300" y="245" class="text-title">Backend Selector</text>
+  <text x="300" y="265" class="text-desc">(Routes to hardware or mock)</text>
+
+  <!-- Flow 3 (Branching) -->
+  <path d="M 300 280 L 300 300 L 150 300 L 150 320" class="line" marker-end="url(#arrowhead)" />
+  <path d="M 300 280 L 300 300 L 450 300 L 450 320" class="line" marker-end="url(#arrowhead)" />
+
+  <!-- Mock Backend -->
+  <rect x="50" y="320" width="200" height="80" class="box bg-mock" />
+  <text x="150" y="350" class="text-title">Mock SRAM</text>
+  <text x="150" y="370" class="text-desc">(calloc / virtual)</text>
+  <text x="150" y="385" class="text-desc">Portable Demo</text>
+
+  <!-- HW Backend -->
+  <rect x="350" y="320" width="200" height="80" class="box bg-hw" />
+  <text x="450" y="350" class="text-title">/dev/mem MMIO</text>
+  <text x="450" y="370" class="text-desc">(Physical Memory Address)</text>
+  <text x="450" y="385" class="text-desc">Hardware SRAM Aperture</text>
+
+</svg>

@@ -1,4 +1,17 @@
+# Binaries
 sram_demo
-sram_demo.exe
+kv_cache_tile_demo
+tensor_tile_demo
+*.exe
+
+# Object files
 *.o
+src/*.o
+examples/*.o
+
+# Build artifacts
+build/
+*.log
+
+# OS generated files
 .DS_Store

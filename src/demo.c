@@ -9,6 +9,19 @@
 #define DEFAULT_SRAM_PHYS_ADDR 0x40000000
 #define DEFAULT_SRAM_SIZE      0x10000
 
+static void print_help(const char *prog_name) {
+    printf("Usage:\n");
+    printf("  %s [options]\n\n", prog_name);
+    printf("Options:\n");
+    printf("  --help                        Show this help message\n");
+    printf("  (no args)                     Run in safe mock mode (default)\n");
+    printf("  --devmem <addr> <size>        Run in real hardware mode via /dev/mem\n\n");
+    printf("WARNING: /dev/mem requires root and can crash your system.\n");
+    printf("Examples:\n");
+    printf("  %s\n", prog_name);
+    printf("  sudo %s --devmem 0x40000000 0x10000\n", prog_name);
+}
+
 static int use_devmem(int argc, char **argv) {
     return argc >= 2 && strcmp(argv[1], "--devmem") == 0;
 }
@@ -17,17 +30,19 @@ int main(int argc, char **argv) {
     sram_region_t sram;
     int rc;
 
+    if (argc >= 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) {
+        print_help(argv[0]);
+        return 0;
+    }
+
     if (use_devmem(argc, argv)) {
-        uintptr_t addr = DEFAULT_SRAM_PHYS_ADDR;
-        size_t size = DEFAULT_SRAM_SIZE;
-
-        if (argc >= 3) {
-            addr = strtoull(argv[2], NULL, 0);
+        if (argc < 4) {
+            fprintf(stderr, "Error: --devmem requires <addr> and <size>\n");
+            print_help(argv[0]);
+            return 1;
         }
-
-        if (argc >= 4) {
-            size = strtoull(argv[3], NULL, 0);
-        }
+        uintptr_t addr = strtoull(argv[2], NULL, 0);
+        size_t size = strtoull(argv[3], NULL, 0);
 
         printf("Opening real SRAM via /dev/mem addr=0x%lx size=0x%lx\n",
                (unsigned long)addr,

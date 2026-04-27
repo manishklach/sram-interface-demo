@@ -9,7 +9,9 @@ typedef enum {
     MEM_TIER_SRAM = 0,
     MEM_TIER_DRAM = 1,
     MEM_TIER_CXL  = 2,
-    MEM_TIER_SSD  = 3
+    MEM_TIER_SSD  = 3,
+    MEM_TIER_NVME = 4,
+    MEM_TIER_UNKNOWN = 5
 } mem_tier_t;
 
 typedef struct {
@@ -17,6 +19,9 @@ typedef struct {
     mem_tier_t preferred_tier;
     size_t size;
     size_t offset;
+    uint32_t flags;
+    // Owner ID: could represent a layer, expert, thread, core, or accelerator queue
+    uint32_t owner_id;
 } mem_hint_region_t;
 
 int mem_hint_reserve(mem_hint_region_t *hint,

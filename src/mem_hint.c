@@ -8,6 +8,8 @@ const char *mem_tier_name(mem_tier_t tier) {
         case MEM_TIER_DRAM: return "DRAM";
         case MEM_TIER_CXL:  return "CXL";
         case MEM_TIER_SSD:  return "SSD";
+        case MEM_TIER_NVME: return "NVMe";
+        case MEM_TIER_UNKNOWN: return "UNKNOWN";
         default: return "UNKNOWN";
     }
 }
@@ -25,6 +27,8 @@ int mem_hint_reserve(mem_hint_region_t *hint,
     hint->preferred_tier = tier;
     hint->size = size;
     hint->offset = offset;
+    hint->flags = 0;
+    hint->owner_id = 0;
 
     printf("[mem_hint] reserve name=%s tier=%s size=%zu offset=0x%zx\n",
            hint->name,

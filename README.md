@@ -1,230 +1,62 @@
-# SRAM Interface Demo v2
+# SRAM Interface Demo
 
-A small GitHub-ready prototype showing two layers:
+**A tiny memory-control-plane prototype showing how software can explicitly bind hot data to SRAM-like residency regions.**
 
-1. **Raw SRAM interface** using MMIO-style read/write APIs.
-2. **Memory hint / residency API** showing how software could request SRAM placement for important data.
+## 🧠 Concept
 
-The demo now includes a **mock SRAM backend**, so it can run on Windows, macOS, Linux, WSL, and CI without real hardware.
+SRAM is not accessed like normal memory in userspace. It must be exposed through hardware interfaces such as MMIO regions, PCIe BARs, or `/dev/mem` (used here for prototyping).
 
----
+This project demonstrates:
+* Mapping a physical SRAM region into userspace
+* Performing explicit reads/writes and buffer copies
+* Building a foundation for **memory-centric runtimes and explicit residency control**
 
-## Why This Exists
+## 🆚 What this is / What this is not
 
-Modern CPUs hide memory placement behind caches and coherency machinery.
+**What this is:**
+* An educational design sketch and prototype for hardware/software codesign.
+* A demonstration of how AI runtimes and compilers might explicitly route memory.
+* A low-level mock and MMIO interface layer.
 
-A memory-centric runtime may want something more explicit:
+**What this is not:**
+* A production-ready memory driver.
+* A replacement for CPUs or standard caching.
+* Safe to use on production systems (`/dev/mem` can crash your hardware).
 
-```text
-Runtime/compiler says:
-"this KV-cache tile is hot; keep it in SRAM"
+## 🕵️‍♂️ Why CPUs hide this
 
-Memory control plane says:
-"bind this object to an SRAM-backed region"
+CPUs normally rely on caches, reorder buffers, coherence, and implicit locality. You access an address, and the hardware transparently decides where it lives. 
 
-Hardware/software substrate says:
-"write it into the SRAM aperture"
+This repository demonstrates **explicit placement** instead. Instead of relying on hidden cache behavior, software can explicitly control:
+* What data is resident
+* Where it lives (SRAM vs DRAM vs CXL)
+* When it is promoted or evicted
+* Which compute unit owns it
+
+## 📁 Project Structure
+
 ```
-
-This repo is a tiny prototype of that stack.
-
----
-
-## Project Structure
-
-```text
 sram-interface-demo/
-├── include/
-│   ├── sram_mmio.h
-│   └── mem_hint.h
-├── src/
-│   ├── sram_mmio.c
-│   ├── mem_hint.c
-│   └── demo.c
-├── Makefile
-└── README.md
+├── docs/                 # Architecture diagrams, use cases, and design docs
+├── examples/             # AI runtime examples (KV cache, tensor staging)
+├── include/              # Header files (sram_mmio, mem_hint)
+├── src/                  # Core library and demo implementation
+├── Makefile              # Build system
+├── INSTALL.md            # Installation and build instructions
+└── README.md             # This file
 ```
 
----
+## ⚙️ Getting Started
 
-## Build on Windows PowerShell
+See [INSTALL.md](INSTALL.md) for build instructions and how to run the demo.
 
-Install GCC using MSYS2 or MinGW.
+## 🚀 Future Extensions
 
-A simple option:
+This repo represents the lowest layer of a memory-control-plane architecture. Future phases (detailed in [ROADMAP.md](ROADMAP.md)) will explore:
+* `/dev/mem_hint` kernel character device
+* Compiler-driven placement (Memory Intent IR)
+* Deeper AI runtime integration
 
-```powershell
-winget install msys2
-```
+## 🧾 License
 
-Then open an MSYS2 MinGW terminal, or use any terminal where `gcc` is available.
-
-From the repo folder:
-
-```powershell
-gcc -O2 -Wall -Wextra -Iinclude src\demo.c src\sram_mmio.c src\mem_hint.c -o sram_demo.exe
-```
-
-Run:
-
-```powershell
-.\sram_demo.exe
-```
-
-Expected output:
-
-```text
-Opening mock SRAM backend size=0x10000
-
-=== Raw SRAM MMIO-style API ===
-SRAM[0x00] = 0xDEADBEEF
-SRAM[0x04] = 0xCAFEBABE
-
-=== Memory Hint / Residency API Demo ===
-[mem_hint] reserve name=kv_cache_tile_L8_H3 tier=SRAM size=37 offset=0x100
-[mem_hint] bind kv_cache_tile_L8_H3 to SRAM at offset=0x100 size=37
-[mem_hint] read kv_cache_tile_L8_H3 from SRAM at offset=0x100 size=37
-Readback payload: KV_CACHE_TILE: token=42 layer=8 head=3
-```
-
----
-
-## Build on Linux / WSL
-
-```bash
-sudo apt update
-sudo apt install build-essential
-make
-./sram_demo
-```
-
-The default mode uses mock SRAM.
-
----
-
-## Run Against Real Hardware SRAM
-
-This requires Linux and an MMIO-exposed SRAM region.
-
-```bash
-sudo ./sram_demo --devmem 0x40000000 0x10000
-```
-
-Arguments:
-
-```text
-./sram_demo --devmem <physical_sram_base> <size>
-```
-
-Example:
-
-```bash
-sudo ./sram_demo --devmem 0x40000000 0x10000
-```
-
----
-
-## Important Safety Warning
-
-The `--devmem` mode uses `/dev/mem`.
-
-That can be dangerous.
-
-It can:
-
-- crash the machine
-- corrupt hardware state
-- violate platform security assumptions
-- fail on normal laptops/desktops
-
-For production systems, use:
-
-- UIO
-- VFIO
-- PCIe BAR mapping
-- a custom kernel driver
-- a proper `/dev/mem_hint` interface
-
----
-
-## API Example
-
-Raw SRAM-style API:
-
-```c
-sram_write32(&sram, 0x00, 0xDEADBEEF);
-uint32_t value = sram_read32(&sram, 0x00);
-```
-
-Memory hint API:
-
-```c
-mem_hint_region_t hint;
-
-mem_hint_reserve(&hint,
-                 "kv_cache_tile_L8_H3",
-                 MEM_TIER_SRAM,
-                 sizeof(payload),
-                 0x100);
-
-mem_hint_bind_to_sram(&sram, &hint, payload);
-mem_hint_read_from_sram(&sram, &hint, readback);
-```
-
----
-
-## Conceptual Stack
-
-```text
-Application / AI Runtime
-        ↓
-Memory Hint API
-        ↓
-SRAM Residency Binding
-        ↓
-MMIO / UIO / VFIO / Kernel Driver
-        ↓
-Physical SRAM
-```
-
----
-
-## Why Mock SRAM Matters
-
-Mock SRAM lets this repo run anywhere.
-
-That makes it useful for:
-
-- GitHub demos
-- CI tests
-- API design
-- explaining the concept
-- showing the future `/dev/mem_hint` direction without needing FPGA hardware
-
----
-
-## Future Direction
-
-This can evolve into a real memory-control-plane prototype:
-
-```c
-mem_hint_reserve("kv_cache", SRAM_TIER);
-mem_hint_bind(ptr, SRAM_REGION_2);
-mem_hint_promote(ptr, SRAM_TIER);
-mem_hint_evict(ptr, DRAM_TIER);
-```
-
-Possible next steps:
-
-- add a Linux kernel driver stub
-- expose `/dev/mem_hint`
-- add `ioctl()` commands for reserve/bind/promote/evict
-- add a Python wrapper
-- add a small AI-runtime example with KV-cache tiles
-- add GitHub Actions for mock-mode build testing
-
----
-
-## License
-
-MIT
+[MIT License](LICENSE)

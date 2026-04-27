@@ -97,8 +97,7 @@ void sram_close(sram_region_t *region) {
 }
 
 uint32_t sram_read32(sram_region_t *region, size_t offset) {
-    if (!region || !region->base || offset + sizeof(uint32_t) > region->size) {
-        fprintf(stderr, "sram_read32: invalid offset\n");
+    if (!region || !region->base || offset + sizeof(uint32_t) < offset || offset + sizeof(uint32_t) > region->size) {
         return 0;
     }
 
@@ -107,8 +106,7 @@ uint32_t sram_read32(sram_region_t *region, size_t offset) {
 }
 
 void sram_write32(sram_region_t *region, size_t offset, uint32_t value) {
-    if (!region || !region->base || offset + sizeof(uint32_t) > region->size) {
-        fprintf(stderr, "sram_write32: invalid offset\n");
+    if (!region || !region->base || offset + sizeof(uint32_t) < offset || offset + sizeof(uint32_t) > region->size) {
         return;
     }
 
@@ -117,8 +115,7 @@ void sram_write32(sram_region_t *region, size_t offset, uint32_t value) {
 }
 
 int sram_copy_to(sram_region_t *region, size_t offset, const void *src, size_t len) {
-    if (!region || !region->base || !src || offset + len > region->size) {
-        fprintf(stderr, "sram_copy_to: invalid copy\n");
+    if (!region || !region->base || !src || offset + len < offset || offset + len > region->size) {
         return -1;
     }
 
@@ -127,8 +124,7 @@ int sram_copy_to(sram_region_t *region, size_t offset, const void *src, size_t l
 }
 
 int sram_copy_from(sram_region_t *region, size_t offset, void *dst, size_t len) {
-    if (!region || !region->base || !dst || offset + len > region->size) {
-        fprintf(stderr, "sram_copy_from: invalid copy\n");
+    if (!region || !region->base || !dst || offset + len < offset || offset + len > region->size) {
         return -1;
     }
 
